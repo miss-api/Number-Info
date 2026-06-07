@@ -284,7 +284,7 @@ async def perform_lookup(lookup_type: str, value: str) -> Dict:
         return {"success": False, "error": f"Unexpected error: {str(e)}"}
 
 def main() -> None:
-    BOT_TOKEN = os.environ.get("BOT_TOKEN", "8416527334:AAFgA1uQTT1RkNpuPLydsSmFJxUu3w4qY5Y")
+    BOT_TOKEN = os.environ.get("BOT_TOKEN", "8416527334:AAGHD8Rd8N7aqC5vufIDp1oDud85Y_hAhRE")
     WEBHOOK_URL = os.environ.get("WEBHOOK_URL", "https://number-info-3tw0.onrender.com")
     PORT = int(os.environ.get("PORT", 10000))
 
