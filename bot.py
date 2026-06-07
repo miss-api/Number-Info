@@ -2,21 +2,18 @@ import asyncio
 import logging
 import os
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Dict
 import aiohttp
 import json
-import re
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters
 
-# Enable logging
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
 
-# API endpoints
 APIS = {
     "phone": {
         "name": "📱 Phone Number",
@@ -26,10 +23,8 @@ APIS = {
     }
 }
 
-# User sessions to store lookup type
 user_sessions = {}
 
-# Bot credits
 BOT_CREDITS = """
 🤖 *Multi-Service Lookup Bot*
 ━━━━━━━━━━━━━━━━━━━━
@@ -49,19 +44,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 {BOT_CREDITS}
 
 👇 *Select a lookup type below:*"""
-    
     keyboard = [
         [InlineKeyboardButton("📱 Phone Number", callback_data='phone')],
         [InlineKeyboardButton("ℹ️ Help", callback_data='help'),
          InlineKeyboardButton("📊 Stats", callback_data='stats')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    await update.message.reply_text(
-        welcome_text,
-        parse_mode='Markdown',
-        reply_markup=reply_markup
-    )
+    await update.message.reply_text(welcome_text, parse_mode='Markdown', reply_markup=reply_markup)
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     help_text = """
@@ -87,12 +76,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 """
     keyboard = [[InlineKeyboardButton("🔙 Back to Main Menu", callback_data='back')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    await update.message.reply_text(
-        help_text,
-        parse_mode='Markdown',
-        reply_markup=reply_markup
-    )
+    await update.message.reply_text(help_text, parse_mode='Markdown', reply_markup=reply_markup)
 
 async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     stats_text = """
@@ -107,29 +91,20 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 """
     for api_id, api_info in APIS.items():
         stats_text += f"• {api_info['emoji']} {api_info['name']}\n"
-    
     stats_text += f"\n{BOT_CREDITS}"
-    
     keyboard = [[InlineKeyboardButton("🔙 Back to Main Menu", callback_data='back')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    await update.message.reply_text(
-        stats_text,
-        parse_mode='Markdown',
-        reply_markup=reply_markup
-    )
+    await update.message.reply_text(stats_text, parse_mode='Markdown', reply_markup=reply_markup)
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
-    
     user_id = query.from_user.id
     data = query.data
-    
+
     if data in APIS:
         user_sessions[user_id] = data
         api_info = APIS[data]
-        
         text = f"""
 {api_info['emoji']} *{api_info['name']} Lookup*
 ━━━━━━━━━━━━━━━━━━━━
@@ -142,13 +117,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
              InlineKeyboardButton("🔙 Back", callback_data='back')]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        await query.edit_message_text(
-            text=text,
-            parse_mode='Markdown',
-            reply_markup=reply_markup
-        )
-    
+        await query.edit_message_text(text=text, parse_mode='Markdown', reply_markup=reply_markup)
+
     elif data == 'help':
         help_text = """
 *🤖 How to use this bot:*
@@ -168,13 +138,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 """
         keyboard = [[InlineKeyboardButton("🔙 Back to Main Menu", callback_data='back')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        await query.edit_message_text(
-            text=help_text,
-            parse_mode='Markdown',
-            reply_markup=reply_markup
-        )
-    
+        await query.edit_message_text(text=help_text, parse_mode='Markdown', reply_markup=reply_markup)
+
     elif data == 'stats':
         stats_text = """
 *📊 Bot Statistics*
@@ -188,18 +153,11 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 """
         for api_id, api_info in APIS.items():
             stats_text += f"• {api_info['emoji']} {api_info['name']}\n"
-        
         stats_text += f"\n{BOT_CREDITS}"
-        
         keyboard = [[InlineKeyboardButton("🔙 Back to Main Menu", callback_data='back')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        await query.edit_message_text(
-            text=stats_text,
-            parse_mode='Markdown',
-            reply_markup=reply_markup
-        )
-    
+        await query.edit_message_text(text=stats_text, parse_mode='Markdown', reply_markup=reply_markup)
+
     elif data == 'back':
         user = query.from_user
         welcome_text = f"""
@@ -208,20 +166,14 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 {BOT_CREDITS}
 
 👇 *Select a lookup type below:*"""
-        
         keyboard = [
             [InlineKeyboardButton("📱 Phone Number", callback_data='phone')],
             [InlineKeyboardButton("ℹ️ Help", callback_data='help'),
              InlineKeyboardButton("📊 Stats", callback_data='stats')]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        await query.edit_message_text(
-            text=welcome_text,
-            parse_mode='Markdown',
-            reply_markup=reply_markup
-        )
-    
+        await query.edit_message_text(text=welcome_text, parse_mode='Markdown', reply_markup=reply_markup)
+
     elif data == 'cancel':
         user_sessions.pop(user_id, None)
         await query.edit_message_text(
@@ -232,29 +184,28 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_user.id
     user_input = update.message.text.strip()
-    
+
     if user_id not in user_sessions:
         keyboard = [[InlineKeyboardButton("📋 Main Menu", callback_data='back')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
-        
         await update.message.reply_text(
             "❌ *No active lookup session.*\n\nPlease select a lookup type first.",
             parse_mode='Markdown',
             reply_markup=reply_markup
         )
         return
-    
+
     lookup_type = user_sessions[user_id]
     api_info = APIS[lookup_type]
-    
+
     processing_msg = await update.message.reply_text(
         f"{api_info['emoji']} *Processing your request...*\n\n⏳ Please wait...",
         parse_mode='Markdown'
     )
-    
+
     try:
         result = await perform_lookup(lookup_type, user_input)
-        
+
         if result["success"]:
             success_text = f"""
 ✅ *{api_info['name']} Lookup Successful*
@@ -269,7 +220,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 """
             formatted_data = json.dumps(result['data'], indent=2, ensure_ascii=False)
             full_message = success_text + f"```json\n{formatted_data}\n```"
-            
+
             if len(full_message) > 4000:
                 await processing_msg.delete()
                 await update.message.reply_text(success_text, parse_mode='Markdown')
@@ -290,7 +241,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 *❌ Error:* {result['error']}
 """
             await processing_msg.edit_text(error_text, parse_mode='Markdown')
-        
+
         keyboard = [
             [InlineKeyboardButton("🔄 New Lookup", callback_data='back'),
              InlineKeyboardButton("📊 Another Value", callback_data=lookup_type)]
@@ -302,7 +253,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             reply_markup=reply_markup
         )
         user_sessions[user_id] = lookup_type
-        
+
     except Exception as e:
         logger.error(f"Error during lookup: {e}")
         await processing_msg.edit_text(
@@ -313,17 +264,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 async def perform_lookup(lookup_type: str, value: str) -> Dict:
     api_info = APIS[lookup_type]
     url = api_info['endpoint'] + value
-    
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as response:
                 if response.status == 200:
                     try:
                         data = await response.json()
-                        return {"success": True, "data": data, "status_code": response.status, "lookup_type": api_info['name'], "value": value}
+                        return {"success": True, "data": data, "status_code": response.status}
                     except json.JSONDecodeError:
                         text = await response.text()
-                        return {"success": False, "error": "Invalid JSON response", "raw_response": text[:200], "status_code": response.status}
+                        return {"success": False, "error": "Invalid JSON response", "status_code": response.status}
                 else:
                     return {"success": False, "error": f"API returned status {response.status}", "status_code": response.status}
     except aiohttp.ClientError as e:
@@ -334,14 +284,9 @@ async def perform_lookup(lookup_type: str, value: str) -> Dict:
         return {"success": False, "error": f"Unexpected error: {str(e)}"}
 
 def main() -> None:
-    BOT_TOKEN = os.environ.get("8416527334:AAFgA1uQTT1RkNpuPLydsSmFJxUu3w4qY5Y")
-    WEBHOOK_URL = os.environ.get("https://number-info-3tw0.onrender.com")  # e.g. https://your-app-name.onrender.com
+    BOT_TOKEN = os.environ.get("BOT_TOKEN", "8416527334:AAFgA1uQTT1RkNpuPLydsSmFJxUu3w4qY5Y")
+    WEBHOOK_URL = os.environ.get("WEBHOOK_URL", "https://number-info-3tw0.onrender.com")
     PORT = int(os.environ.get("PORT", 10000))
-
-    if not BOT_TOKEN:
-        raise ValueError("BOT_TOKEN environment variable not set!")
-    if not WEBHOOK_URL:
-        raise ValueError("WEBHOOK_URL environment variable not set!")
 
     application = Application.builder().token(BOT_TOKEN).build()
 
