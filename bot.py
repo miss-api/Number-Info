@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 from datetime import datetime
 from typing import Dict, Optional
 import aiohttp
@@ -15,7 +16,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# API endpoints - Only Phone Number lookup kept
+# API endpoints
 APIS = {
     "phone": {
         "name": "📱 Phone Number",
@@ -41,7 +42,6 @@ BOT_CREDITS = """
 """
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Send a welcome message with inline keyboard"""
     user = update.effective_user
     welcome_text = f"""
 👋 Hello *{user.first_name}*! 
@@ -64,7 +64,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Send help information"""
     help_text = """
 *🤖 How to use this bot:*
 
@@ -86,7 +85,6 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 /help - Show this help message
 /stats - Show bot statistics
 """
-    
     keyboard = [[InlineKeyboardButton("🔙 Back to Main Menu", callback_data='back')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
@@ -97,7 +95,6 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     )
 
 async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Show bot statistics"""
     stats_text = """
 *📊 Bot Statistics*
 ━━━━━━━━━━━━━━━━━━━━
@@ -108,7 +105,6 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
 *🔧 Supported Lookups:*
 """
-    
     for api_id, api_info in APIS.items():
         stats_text += f"• {api_info['emoji']} {api_info['name']}\n"
     
@@ -124,7 +120,6 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     )
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle button callbacks"""
     query = update.callback_query
     await query.answer()
     
@@ -132,7 +127,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     data = query.data
     
     if data in APIS:
-        # Store lookup type for user
         user_sessions[user_id] = data
         api_info = APIS[data]
         
@@ -172,9 +166,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 • Results depend on API availability
 • Privacy is important - use responsibly
 """
-        keyboard = [
-            [InlineKeyboardButton("🔙 Back to Main Menu", callback_data='back')]
-        ]
+        keyboard = [[InlineKeyboardButton("🔙 Back to Main Menu", callback_data='back')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         
         await query.edit_message_text(
@@ -194,7 +186,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 *🔧 Supported Lookups:*
 """
-        
         for api_id, api_info in APIS.items():
             stats_text += f"• {api_info['emoji']} {api_info['name']}\n"
         
@@ -210,7 +201,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         )
     
     elif data == 'back':
-        # Show main menu again
         user = query.from_user
         welcome_text = f"""
 👋 Welcome back *{user.first_name}*! 
@@ -233,7 +223,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         )
     
     elif data == 'cancel':
-        # Clear user session
         user_sessions.pop(user_id, None)
         await query.edit_message_text(
             text="❌ *Operation cancelled.*\n\nUse /start to begin again.",
@@ -241,11 +230,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         )
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle user messages for lookup values"""
     user_id = update.effective_user.id
     user_input = update.message.text.strip()
     
-    # Check if user has an active lookup session
     if user_id not in user_sessions:
         keyboard = [[InlineKeyboardButton("📋 Main Menu", callback_data='back')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
@@ -260,18 +247,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     lookup_type = user_sessions[user_id]
     api_info = APIS[lookup_type]
     
-    # Send processing message
     processing_msg = await update.message.reply_text(
         f"{api_info['emoji']} *Processing your request...*\n\n⏳ Please wait...",
         parse_mode='Markdown'
     )
     
     try:
-        # Perform lookup
         result = await perform_lookup(lookup_type, user_input)
         
         if result["success"]:
-            # Format success message
             success_text = f"""
 ✅ *{api_info['name']} Lookup Successful*
 ━━━━━━━━━━━━━━━━━━━━
@@ -283,37 +267,18 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 ━━━━━━━━━━━━━━━━━━━━
 *📋 Results:*
 """
-            
-            # Format JSON data
             formatted_data = json.dumps(result['data'], indent=2, ensure_ascii=False)
-            
-            # Split message if too long
             full_message = success_text + f"```json\n{formatted_data}\n```"
             
             if len(full_message) > 4000:
-                # Send results in multiple messages
                 await processing_msg.delete()
-                
-                # Send success header
-                await update.message.reply_text(
-                    success_text,
-                    parse_mode='Markdown'
-                )
-                
-                # Send data in chunks
+                await update.message.reply_text(success_text, parse_mode='Markdown')
                 for i in range(0, len(formatted_data), 3000):
                     chunk = formatted_data[i:i+3000]
-                    await update.message.reply_text(
-                        f"```json\n{chunk}\n```",
-                        parse_mode='Markdown'
-                    )
+                    await update.message.reply_text(f"```json\n{chunk}\n```", parse_mode='Markdown')
             else:
-                await processing_msg.edit_text(
-                    full_message,
-                    parse_mode='Markdown'
-                )
+                await processing_msg.edit_text(full_message, parse_mode='Markdown')
         else:
-            # Format error message
             error_text = f"""
 ❌ *{api_info['name']} Lookup Failed*
 ━━━━━━━━━━━━━━━━━━━━
@@ -324,25 +289,18 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 *❌ Error:* {result['error']}
 """
-            await processing_msg.edit_text(
-                error_text,
-                parse_mode='Markdown'
-            )
+            await processing_msg.edit_text(error_text, parse_mode='Markdown')
         
-        # Add action buttons after results
         keyboard = [
             [InlineKeyboardButton("🔄 New Lookup", callback_data='back'),
              InlineKeyboardButton("📊 Another Value", callback_data=lookup_type)]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
-        
         await update.message.reply_text(
             "👇 *What would you like to do next?*",
             parse_mode='Markdown',
             reply_markup=reply_markup
         )
-        
-        # Keep session active for same lookup type
         user_sessions[user_id] = lookup_type
         
     except Exception as e:
@@ -353,74 +311,55 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         )
 
 async def perform_lookup(lookup_type: str, value: str) -> Dict:
-    """Perform API lookup asynchronously"""
     api_info = APIS[lookup_type]
     url = api_info['endpoint'] + value
     
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get(url, timeout=10) as response:
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as response:
                 if response.status == 200:
                     try:
                         data = await response.json()
-                        return {
-                            "success": True,
-                            "data": data,
-                            "status_code": response.status,
-                            "lookup_type": api_info['name'],
-                            "value": value
-                        }
+                        return {"success": True, "data": data, "status_code": response.status, "lookup_type": api_info['name'], "value": value}
                     except json.JSONDecodeError:
                         text = await response.text()
-                        return {
-                            "success": False,
-                            "error": "Invalid JSON response",
-                            "raw_response": text[:200],
-                            "status_code": response.status
-                        }
+                        return {"success": False, "error": "Invalid JSON response", "raw_response": text[:200], "status_code": response.status}
                 else:
-                    return {
-                        "success": False,
-                        "error": f"API returned status {response.status}",
-                        "status_code": response.status
-                    }
+                    return {"success": False, "error": f"API returned status {response.status}", "status_code": response.status}
     except aiohttp.ClientError as e:
-        return {
-            "success": False,
-            "error": f"Network error: {str(e)}"
-        }
+        return {"success": False, "error": f"Network error: {str(e)}"}
     except asyncio.TimeoutError:
-        return {
-            "success": False,
-            "error": "Request timeout"
-        }
+        return {"success": False, "error": "Request timeout"}
     except Exception as e:
-        return {
-            "success": False,
-            "error": f"Unexpected error: {str(e)}"
-        }
+        return {"success": False, "error": f"Unexpected error: {str(e)}"}
 
 def main() -> None:
-    """Start the bot"""
-    # Replace 'YOUR_BOT_TOKEN' with your actual bot token
-    BOT_TOKEN = "8416527334:AAFgA1uQTT1RkNpuPLydsSmFJxUu3w4qY5Y"
-    
-    # Create the Application
+    BOT_TOKEN = os.environ.get("8416527334:AAFgA1uQTT1RkNpuPLydsSmFJxUu3w4qY5Y")
+    WEBHOOK_URL = os.environ.get("https://number-info-3tw0.onrender.com")  # e.g. https://your-app-name.onrender.com
+    PORT = int(os.environ.get("PORT", 10000))
+
+    if not BOT_TOKEN:
+        raise ValueError("BOT_TOKEN environment variable not set!")
+    if not WEBHOOK_URL:
+        raise ValueError("WEBHOOK_URL environment variable not set!")
+
     application = Application.builder().token(BOT_TOKEN).build()
-    
-    # Register handlers
+
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("stats", stats_command))
     application.add_handler(CallbackQueryHandler(button_handler))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    
-    # Start the bot
-    print("🤖 Bot is starting...")
+
+    print("🤖 Bot is starting with webhook...")
+    print(f"🌐 Webhook URL: {WEBHOOK_URL}")
     print("👨‍💻 Developer: @FroxtDevil")
-    print("🔗 Bot Token:", BOT_TOKEN[:10] + "..." if len(BOT_TOKEN) > 10 else BOT_TOKEN)
-    
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+
+    application.run_webhook(
+        listen="0.0.0.0",
+        port=PORT,
+        webhook_url=f"{WEBHOOK_URL}/webhook",
+    )
 
 if __name__ == '__main__':
     main()
