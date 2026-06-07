@@ -403,7 +403,7 @@ async def perform_lookup(lookup_type: str, value: str) -> Dict:
 def main() -> None:
     """Start the bot"""
     # Replace 'YOUR_BOT_TOKEN' with your actual bot token
-    BOT_TOKEN = "8906104828:AAFae9tj3lBne27o3GhteZBL7jaNwSdcSZM"
+    BOT_TOKEN = "8416527334:AAFgA1uQTT1RkNpuPLydsSmFJxUu3w4qY5Y"
     
     # Create the Application
     application = Application.builder().token(BOT_TOKEN).build()
